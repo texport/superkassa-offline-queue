@@ -1,0 +1,10 @@
+{
+  "mode": "DESKTOP",
+  "storage": {
+    "engine": "SQLITE",
+    "jdbcUrl": "jdbc:sqlite:build/core.db"
+  },
+  "nodeId": "node-1",
+  "ofdProtocolVersion": "203",
+  "allowChanges": true
+}
