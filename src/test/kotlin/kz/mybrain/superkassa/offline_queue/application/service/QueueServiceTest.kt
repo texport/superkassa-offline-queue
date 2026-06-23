@@ -233,4 +233,48 @@ class QueueServiceTest {
             storage.lastStatusUpdate
         )
     }
+
+    @Test
+    fun testProcessNextHandlerThrowsException() {
+        val storage = StubStorage()
+        val lock = StubLock()
+        val backoff = BackoffPolicy { now, attempt -> now + attempt * 2000L }
+        val service = QueueService(
+            storage = storage,
+            lockPort = lock,
+            handler = { throw IllegalStateException("Database Connection Lost") },
+            backoffPolicy = backoff,
+            ownerId = "node-1",
+            timeProvider = { 10000L }
+        )
+
+        val cmd = QueueCommand(
+            "1",
+            "c1",
+            QueueLane.OFFLINE,
+            QueueCommandType.TICKET,
+            "ref1",
+            1000L,
+            QueueStatus.PENDING,
+            0
+        )
+        storage.nextPendingResponse = cmd
+
+        assertTrue(service.processNext("c1", QueueLane.OFFLINE))
+
+        // Lock should be released successfully
+        assertTrue(lock.lockAcquired.not())
+
+        // The command status should be updated to FAILED with the exception message
+        assertEquals(
+            StubStorage.StatusUpdate(
+                "1",
+                QueueStatus.FAILED,
+                1,
+                "Database Connection Lost",
+                12000L
+            ),
+            storage.lastStatusUpdate
+        )
+    }
 }

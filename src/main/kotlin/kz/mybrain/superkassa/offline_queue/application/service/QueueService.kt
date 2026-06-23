@@ -51,7 +51,13 @@ class QueueService(
         try {
             val next = storage.nextPending(cashboxId, lane, now) ?: return false
             storage.markInProgress(next.id, now)
-            val result = handler.handle(next)
+            @Suppress("TooGenericExceptionCaught")
+            val result = try {
+                handler.handle(next)
+            } catch (e: Exception) {
+                logger.error("Unhandled exception in queue command handler. id=${next.id}", e)
+                DispatchResult(QueueStatus.FAILED, errorMessage = e.message ?: e.javaClass.simpleName)
+            }
             applyResult(next, result, now)
             return true
         } finally {
