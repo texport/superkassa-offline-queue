@@ -65,6 +65,7 @@ class QueueService(
         }
     }
 
+    @Suppress("unused")
     fun processBatch(cashboxId: String, lane: QueueLane, limit: Int): Int {
         var processed = 0
         while (processed < limit) {
