@@ -26,7 +26,13 @@ class QueueService(
     private val logger = LoggerFactory.getLogger(QueueService::class.java)
 
     fun enqueue(command: QueueCommand): Boolean {
-        logger.info("Queue enqueue. cashboxId={}, lane={}, type={}, id={}", command.cashboxId, command.lane, command.type, command.id)
+        logger.info(
+            "Queue enqueue. cashboxId={}, lane={}, type={}, id={}",
+            command.cashboxId,
+            command.lane,
+            command.type,
+            command.id
+        )
         return storage.enqueue(command)
     }
 

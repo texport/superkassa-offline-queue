@@ -86,3 +86,11 @@ exceptions:
   TooGenericExceptionCaught:
     active: true
     excludes: ['**/OfdCodec.kt', '**/OfdInfoCountersSnapshotParser.kt', '**/OfdQueueCommandHandler.kt', '**/OfdResponseUtils.kt', '**/OfdManagerAdapter.kt', '**/Base64TokenCodecPort.kt', '**/ResilienceOfdManagerPortAdapter.kt', '**/DeliveryPortAdapter.kt', '**/ReceiptHtmlRenderer.kt', '**/ConsoleLoader.kt', '**/*Controller.kt', '**/*Mapper.kt', '**/*Indicator.kt', '**/*Delegate.kt', '**/*Repository.kt', '**/*Session.kt', '**/*HealthChecker.kt', '**/*Adapter.kt']
+
+formatting:
+  active: true
+  PackageName:
+    active: false
+  MaximumLineLength:
+    active: false
+
