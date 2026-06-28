@@ -1,10 +1,10 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.detekt)
     alias(libs.plugins.nmcp)
-    id("maven-publish")
-    id("signing")
-    id("jacoco")
+    alias(libs.plugins.kotlin.multiplatform)
+    `maven-publish`
+    signing
+    jacoco
 }
 
 group = "io.github.texport"
@@ -23,64 +23,100 @@ detekt {
 }
 
 dependencies {
-    implementation(libs.slf4j.api)
-    
-    testImplementation(kotlin("test"))
     detektPlugins(libs.detekt.formatting)
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvm()
+    
+    iosArm64()
+    iosX64()
+    iosSimulatorArm64()
+
+    jvmToolchain(libs.versions.java.get().toInt())
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                // Core offline-queue logic has no external dependencies
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        jvmMain {
+            dependencies {
+                implementation(libs.slf4j.api)
+            }
+        }
+        jvmTest {
+            // JVM-specific tests
+        }
+    }
+
+    targets.all {
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    freeCompilerArgs.add("-Xexpect-actual-classes")
+                }
+            }
+        }
+    }
 }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-    jvmTarget = "17"
+    jvmTarget = libs.versions.java.get()
 }
 
-val sourcesJar = tasks.register<Jar>("sourcesJar") {
-    description = "Generates the sources JAR artifact"
-    archiveClassifier.set("sources")
-    from(sourceSets.main.get().allSource)
+jacoco {
+    toolVersion = libs.versions.jacocoVersion.get()
 }
 
-val javadocJar = tasks.register<Jar>("javadocJar") {
-    description = "Generates the javadoc JAR artifact"
-    archiveClassifier.set("javadoc")
-    from(tasks.javadoc)
+tasks.named<Test>("jvmTest") {
+    useJUnitPlatform()
+    finalizedBy(tasks.named("jacocoTestReport"))
+}
+
+val jacocoTestReport = tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("jvmTest"))
+    classDirectories.setFrom(files(tasks.named("compileKotlinJvm")))
+    sourceDirectories.setFrom(files("src/commonMain/kotlin", "src/jvmMain/kotlin"))
+    executionData.setFrom(files(layout.buildDirectory.file("jacoco/jvmTest.exec")))
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
-            artifact(sourcesJar)
-            artifact(javadocJar)
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name.set("superkassa-offline-queue")
+            description.set("Offline command queue and synchronization logic for Superkassa")
+            url.set("https://github.com/texport/superkassa-offline-queue")
 
-            pom {
-                name.set("superkassa-offline-queue")
-                description.set("Offline command queue and synchronization logic for Superkassa")
+            licenses {
+                license {
+                    name.set("The Apache License, Version 2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+
+            developers {
+                developer {
+                    id.set("sergeyivanov")
+                    name.set("Sergey Ivanov")
+                    email.set("ivanov.sergey.ekb@gmail.com")
+                }
+            }
+
+            scm {
+                connection.set("scm:git:git://github.com/texport/superkassa-offline-queue.git")
+                developerConnection.set("scm:git:ssh://github.com/texport/superkassa-offline-queue.git")
                 url.set("https://github.com/texport/superkassa-offline-queue")
-
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-
-                developers {
-                    developer {
-                        id.set("sergeyivanov")
-                        name.set("Sergey Ivanov")
-                        email.set("ivanov.sergey.ekb@gmail.com")
-                    }
-                }
-
-                scm {
-                    connection.set("scm:git:git://github.com/texport/superkassa-offline-queue.git")
-                    developerConnection.set("scm:git:ssh://github.com/texport/superkassa-offline-queue.git")
-                    url.set("https://github.com/texport/superkassa-offline-queue")
-                }
             }
         }
     }
@@ -92,26 +128,14 @@ signing {
     if (!signingKey.isNullOrEmpty() && !signingPassword.isNullOrEmpty()) {
         useInMemoryPgpKeys(signingKey, signingPassword)
     }
-    sign(publishing.publications["mavenJava"])
+    sign(publishing.publications)
 }
 
 nmcp {
     publishAllPublicationsToCentralPortal {
         username.set(project.findProperty("ossrhUsername")?.toString() ?: System.getenv("OSSRH_USERNAME"))
         password.set(project.findProperty("ossrhPassword")?.toString() ?: System.getenv("OSSRH_PASSWORD"))
-        publishingType.set("USER_MANAGED")
+        publishingType.set("AUTOMATIC")
     }
 }
 
-tasks.test {
-    useJUnitPlatform()
-    finalizedBy(tasks.jacocoTestReport)
-}
-
-tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
-}

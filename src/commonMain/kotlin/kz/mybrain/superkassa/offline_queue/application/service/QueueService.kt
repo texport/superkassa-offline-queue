@@ -9,7 +9,7 @@ import kz.mybrain.superkassa.offline_queue.domain.model.QueueLane
 import kz.mybrain.superkassa.offline_queue.domain.model.QueueStatus
 import kz.mybrain.superkassa.offline_queue.domain.port.LeaseLockPort
 import kz.mybrain.superkassa.offline_queue.domain.port.QueueStoragePort
-import org.slf4j.LoggerFactory
+import kz.mybrain.superkassa.offline_queue.application.logging.getLogger
 
 /**
  * Сервис очереди команд (offline).
@@ -23,7 +23,7 @@ class QueueService(
     private val leaseMs: Long = 15000,
     private val timeProvider: TimeProvider = SystemTimeProvider
 ) {
-    private val logger = LoggerFactory.getLogger(QueueService::class.java)
+    private val logger = getLogger(QueueService::class)
 
     fun enqueue(command: QueueCommand): Boolean {
         logger.info(
@@ -56,7 +56,7 @@ class QueueService(
                 handler.handle(next)
             } catch (e: Exception) {
                 logger.error("Unhandled exception in queue command handler. id=${next.id}", e)
-                DispatchResult(QueueStatus.FAILED, errorMessage = e.message ?: e.javaClass.simpleName)
+                DispatchResult(QueueStatus.FAILED, errorMessage = e.message ?: (e::class.simpleName ?: "Exception"))
             }
             applyResult(next, result, now)
             return true

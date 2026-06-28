@@ -1,8 +1,0 @@
-{
-    "mode": "DESKTOP",
-    "storage": {
-        "engine": "SQLITE",
-        "jdbcUrl": "jdbc:sqlite:build/core.db"
-    },
-    "allowChanges": true
-}
