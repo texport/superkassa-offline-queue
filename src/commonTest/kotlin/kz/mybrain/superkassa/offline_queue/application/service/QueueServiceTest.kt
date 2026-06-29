@@ -277,4 +277,97 @@ class QueueServiceTest {
             storage.lastStatusUpdate
         )
     }
+
+    @Test
+    fun testDefaultBackoffPolicy() {
+        val policy = kz.mybrain.superkassa.offline_queue.application.policy.DefaultBackoffPolicy(1000, 60000)
+        assertEquals(11000L, policy.nextAttemptAt(10000L, 0)) // 10000 + 1000 * 2^0 = 11000
+        assertEquals(12000L, policy.nextAttemptAt(10000L, 1)) // 10000 + 1000 * 2^1 = 12000
+        assertEquals(14000L, policy.nextAttemptAt(10000L, 2)) // 10000 + 1000 * 2^2 = 14000
+        assertEquals(70000L, policy.nextAttemptAt(10000L, 10)) // 10000 + 60000 (max) = 70000
+
+        val defaultPolicy = kz.mybrain.superkassa.offline_queue.application.policy.DefaultBackoffPolicy()
+        assertEquals(11000L, defaultPolicy.nextAttemptAt(10000L, 0))
+    }
+
+    @Test
+    fun testSystemTimeProvider() {
+        val now = kz.mybrain.superkassa.offline_queue.application.policy.SystemTimeProvider.now()
+        assertTrue(now > 0)
+    }
+
+    @Test
+    fun testProcessNextNoPending() {
+        val storage = StubStorage()
+        val lock = StubLock()
+        val service = QueueService(
+            storage = storage,
+            lockPort = lock,
+            handler = { DispatchResult(QueueStatus.SENT) },
+            backoffPolicy = { _, _ -> 0L },
+            ownerId = "node-1"
+        )
+        storage.nextPendingResponse = null
+        assertFalse(service.processNext("c1", QueueLane.OFFLINE))
+        assertTrue(lock.lockAcquired.not()) // Released in finally
+    }
+
+    @Test
+    fun testProcessBatch() {
+        val storage = StubStorage()
+        val lock = StubLock()
+        var processCount = 0
+        val service = QueueService(
+            storage = storage,
+            lockPort = lock,
+            handler = {
+                processCount++
+                storage.nextPendingResponse = null
+                DispatchResult(QueueStatus.SENT)
+            },
+            backoffPolicy = { _, _ -> 0L },
+            ownerId = "node-1"
+        )
+        
+        val cmd = QueueCommand("1", "c1", QueueLane.OFFLINE, QueueCommandType.TICKET, "ref1", 1000L, QueueStatus.PENDING, 0)
+        storage.nextPendingResponse = cmd
+
+        // First batch run processes 1
+        assertEquals(1, service.processBatch("c1", QueueLane.OFFLINE, 10))
+        assertEquals(1, processCount)
+
+        // If lock acquisition fails, stops batch processing
+        lock.lockBusy = true
+        assertEquals(0, service.processBatch("c1", QueueLane.OFFLINE, 10))
+    }
+
+    @Test
+    fun testApplyResultPendingAndInProgress() {
+        val storage = StubStorage()
+        val lock = StubLock()
+        var currentStatus = QueueStatus.PENDING
+        val service = QueueService(
+            storage = storage,
+            lockPort = lock,
+            handler = { DispatchResult(currentStatus, retryAt = 15000L) },
+            backoffPolicy = { _, _ -> 0L },
+            ownerId = "node-1"
+        )
+        val cmd = QueueCommand("1", "c1", QueueLane.OFFLINE, QueueCommandType.TICKET, "ref1", 1000L, QueueStatus.PENDING, 0)
+        storage.nextPendingResponse = cmd
+
+        assertTrue(service.processNext("c1", QueueLane.OFFLINE))
+        assertEquals(
+            StubStorage.StatusUpdate("1", QueueStatus.PENDING, 1, null, 15000L),
+            storage.lastStatusUpdate
+        )
+
+        currentStatus = QueueStatus.IN_PROGRESS
+        storage.nextPendingResponse = cmd.copy(attempt = 1)
+        assertTrue(service.processNext("c1", QueueLane.OFFLINE))
+        assertEquals(
+            StubStorage.StatusUpdate("1", QueueStatus.IN_PROGRESS, 2, null, 15000L),
+            storage.lastStatusUpdate
+        )
+    }
 }
