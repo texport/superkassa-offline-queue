@@ -11,11 +11,9 @@
 
 ---
 
-## Documentation in English
+A lightweight, clean-architecture Kotlin Multiplatform (KMP) library providing offline command queuing and synchronization mechanisms for the **Superkassa** fiscalization system.
 
-A lightweight, clean-architecture Kotlin/JVM library providing offline command queuing and synchronization mechanisms for the **Superkassa** fiscalization system.
-
-It encapsulates queue management, retry policies with backoff, and distributed lease locking to ensure transaction safety and execution integrity in unstable network environments.
+It encapsulates queue management, retry policies with backoff, and distributed lease locking to ensure transaction safety and execution integrity in unstable network environments on both JVM (Server) and iOS/Android client applications.
 
 ### Key Features
 - **Offline Command Buffer**: Local queue buffer for commands waiting for internet connection, fully decoupled from database implementations via clean domain ports (`QueueStoragePort`).
@@ -25,15 +23,26 @@ It encapsulates queue management, retry policies with backoff, and distributed l
 
 ---
 
-### Installation
-
-Add the dependency to your `build.gradle.kts`:
+#### Kotlin Multiplatform & Android
+Add the dependency to your shared `commonMain` source set inside `build.gradle.kts`:
 
 ```kotlin
-dependencies {
-    implementation("io.github.texport:superkassa-offline-queue:1.0.1")
+kotlin {
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation("io.github.texport:superkassa-offline-queue:1.0.1")
+            }
+        }
+    }
 }
 ```
+
+#### Apple Swift Package Manager (SPM)
+You can integrate this library directly into your iOS project using Xcode's Swift Package Manager:
+1. In Xcode, select **File ➔ Add Package Dependencies...**
+2. Enter the repository URL: `https://github.com/texport/superkassa-offline-queue.git`
+3. Set the version rules to **Up to Next Major** starting with `1.0.1`.
 
 ---
 
@@ -71,11 +80,9 @@ queueService.processBatch(cashboxId = "cashbox-123", lane = QueueLane.OFFLINE, l
 
 ---
 
-## Документация на русском языке
+Легковесная мультиплатформенная библиотека (Kotlin Multiplatform / KMP) для управления локальной очередью команд и асинхронной синхронизации в системе фискализации **Superkassa**.
 
-Легковесная библиотека на Kotlin/JVM для управления локальной очередью команд и асинхронной синхронизации в системе фискализации **Superkassa**.
-
-Она инкапсулирует логику буферизации, политики повторных попыток с экспоненциальной задержкой (backoff) и распределенную аренду блокировок (lease locking) для обеспечения транзакционной безопасности в нестабильных сетевых условиях.
+Она инкапсулирует логику буферизации, политики повторных попыток с экспоненциальной задержкой (backoff) и распределенную аренду блокировок (lease locking) для обеспечения транзакционной безопасности в нестабильных сетевых условиях на сервере (JVM) и в мобильных приложениях (iOS/Android).
 
 ### Ключевые возможности
 - **Автономный буфер команд**: Локальное накопление команд в очереди в режиме офлайн, полностью абстрагированное от реализации хранилища через порт `QueueStoragePort`.
@@ -85,15 +92,26 @@ queueService.processBatch(cashboxId = "cashbox-123", lane = QueueLane.OFFLINE, l
 
 ---
 
-### Установка
-
-Добавьте зависимость в ваш `build.gradle.kts`:
+#### В Kotlin Multiplatform и Android
+Добавьте зависимость в ваш общий набор исходников `commonMain` в `build.gradle.kts`:
 
 ```kotlin
-dependencies {
-    implementation("io.github.texport:superkassa-offline-queue:1.0.1")
+kotlin {
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation("io.github.texport:superkassa-offline-queue:1.0.1")
+            }
+        }
+    }
 }
 ```
+
+#### В Apple iOS проектах (через SPM)
+Вы можете подключить библиотеку непосредственно в iOS приложение с помощью Swift Package Manager в Xcode:
+1. Выберите в Xcode: **File ➔ Add Package Dependencies...**
+2. Введите URL репозитория: `https://github.com/texport/superkassa-offline-queue.git`
+3. Установите правило версии **Up to Next Major** начиная с `1.0.1`.
 
 ---
 
