@@ -25,8 +25,5 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Run Detekt Static Analysis
-      run: ./gradlew detekt
-
-    - name: Run Tests
-      run: ./gradlew test
+    - name: Run Detekt and Tests with Coverage
+      run: ./gradlew clean check
